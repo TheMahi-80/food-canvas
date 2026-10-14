@@ -274,3 +274,41 @@ export function priceCart(input: PriceCartInput): PricedCart {
     estimatedTotal,
   };
 }
+
+export interface ProductPriceInfo {
+  /** Lowest price the customer can currently pay for the base item (add-ons excluded). */
+  price: Taka;
+  /** Regular price of that same option, before any item discount. */
+  regularPrice: Taka;
+  /** True when the product has variants with different prices ("from" price). */
+  isFromPrice: boolean;
+  /** The item discount behind `price`, if any. */
+  discount: Pick<Discount, "id" | "type" | "value" | "nameBn"> | null;
+}
+
+/**
+ * Display price for a product card, using the same discount rule as priceCart.
+ * For products with variants, the cheapest available variant (after its best discount) is shown;
+ * if no variant is available, the cheapest variant overall.
+ */
+export function productPriceInfo(product: MenuProduct, discounts: readonly Discount[], now: Date): ProductPriceInfo {
+  const available = product.variants.filter((v) => v.isAvailable);
+  const options = product.variants.length === 0 ? [null] : available.length > 0 ? available : product.variants;
+
+  let best: ProductPriceInfo | null = null;
+  for (const variant of options) {
+    const regular = variant ? variant.price : product.price;
+    const found = bestItemDiscount(product, variant !== null, regular, discounts, now);
+    const price = found ? found.price : regular;
+    if (best === null || price < best.price) {
+      best = {
+        price,
+        regularPrice: regular,
+        isFromPrice: false,
+        discount: found ? { id: found.discount.id, type: found.discount.type, value: found.discount.value, nameBn: found.discount.nameBn } : null,
+      };
+    }
+  }
+  const distinctPrices = new Set(product.variants.map((v) => v.price));
+  return { ...best!, isFromPrice: distinctPrices.size > 1 };
+}

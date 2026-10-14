@@ -78,6 +78,11 @@ export function getOpenStatus(now: Date, hours: readonly OpeningHoursDay[], temp
   return { state: "closed", next: null };
 }
 
+/** Status for the current moment (reads the system clock; tests mock it with vi.setSystemTime). */
+export function getCurrentOpenStatus(hours: readonly OpeningHoursDay[], temporarilyClosed = false): OpenStatus {
+  return getOpenStatus(new Date(), hours, temporarilyClosed);
+}
+
 // ---------------------------------------------------------------------------
 // Bangla formatting
 // ---------------------------------------------------------------------------

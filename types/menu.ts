@@ -60,3 +60,57 @@ export interface OpeningHoursDay {
   closesAt: string;
   isClosed: boolean;
 }
+
+export interface MenuCategory {
+  id: string;
+  slug: string;
+  nameBn: string;
+  nameEn: string | null;
+  sortOrder: number;
+}
+
+/** A public menu product with display fields. */
+export interface MenuItem extends MenuProduct {
+  slug: string;
+  descriptionBn: string | null;
+  descriptionEn: string | null;
+  /** Path inside the menu-images bucket, or null. */
+  imagePath: string | null;
+  isFeatured: boolean;
+  sortOrder: number;
+}
+
+/** Public restaurant settings (every field is safe to show publicly). */
+export interface PublicSettings {
+  restaurantName: string;
+  whatsappNumber: string;
+  contactPhone: string | null;
+  email: string | null;
+  facebookUrl: string | null;
+  addressBn: string | null;
+  mapUrl: string | null;
+  temporarilyClosed: boolean;
+  closureNoteBn: string | null;
+  deliveryEnabled: boolean | null;
+  pickupEnabled: boolean | null;
+  deliveryFee: Taka | null;
+  minOrder: Taka | null;
+  heroHeadlineBn: string;
+  heroSubtextBn: string;
+  heroImagePath: string | null;
+  aboutBn: string | null;
+}
+
+export interface SiteInfo {
+  settings: PublicSettings;
+  hours: OpeningHoursDay[];
+}
+
+export interface PublicMenu {
+  categories: MenuCategory[];
+  items: MenuItem[];
+  /** Public, non-coupon discounts (including scheduled ones; pricing filters by time). */
+  discounts: Discount[];
+  /** Server time (ms) when this data was fetched; used until the client clock is known. */
+  fetchedAt: number;
+}

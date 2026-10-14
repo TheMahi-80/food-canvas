@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CartLine } from "@/lib/cart";
 import type { Discount, MenuProduct } from "@/types/menu";
-import { applyItemDiscount, cartDiscountAmount, isDiscountLive, priceCart, type PriceCartInput } from "./index";
+import { applyItemDiscount, cartDiscountAmount, isDiscountLive, priceCart, productPriceInfo, type PriceCartInput } from "./index";
 
 const NOW = new Date("2026-10-14T12:00:00Z");
 
@@ -462,5 +462,44 @@ describe("invariants over randomized carts", () => {
       expect(r.estimatedTotal).toBeGreaterThanOrEqual(0);
       expect(Number.isInteger(r.estimatedTotal)).toBe(true);
     }
+  });
+});
+
+describe("productPriceInfo (card display price, same rule as priceCart)", () => {
+  it("simple product without discount", () => {
+    expect(productPriceInfo(burger, [], NOW)).toEqual({ price: 180, regularPrice: 180, isFromPrice: false, discount: null });
+  });
+
+  it("shows the discounted price and the regular price", () => {
+    const d = discount({ id: "d", scope: "product", type: "percentage", value: 10, productId: "p-burger" });
+    expect(productPriceInfo(burger, [d], NOW)).toMatchObject({ price: 162, regularPrice: 180, discount: { id: "d", type: "percentage", value: 10 } });
+  });
+
+  it("variants: cheapest available variant, marked as a 'from' price; unavailable variants ignored", () => {
+    const cheapUnavailable = { ...pizza, variants: [{ ...pizza.variants[0], isAvailable: false }, pizza.variants[1]] };
+    expect(productPriceInfo(cheapUnavailable, [], NOW)).toMatchObject({ price: 480, isFromPrice: true });
+    expect(productPriceInfo(pizza, [], NOW)).toMatchObject({ price: 350, isFromPrice: true });
+  });
+
+  it("variants: discount applied per variant, then the cheapest is shown", () => {
+    const d = discount({ id: "d", scope: "category", type: "fixed", value: 100, categoryId: "c-pizza" });
+    expect(productPriceInfo(pizza, [d], NOW)).toMatchObject({ price: 250, regularPrice: 350, discount: { id: "d" } });
+  });
+
+  it("all variants unavailable: still shows a price (cheapest overall)", () => {
+    const none = { ...pizza, variants: pizza.variants.map((v) => ({ ...v, isAvailable: false })) };
+    expect(productPriceInfo(none, [], NOW).price).toBe(350);
+  });
+
+  it("matches priceCart for the same choice", () => {
+    const ds = [discount({ id: "d", scope: "product", type: "fixed", value: 25, productId: "p-burger" })];
+    const info = productPriceInfo(burger, ds, NOW);
+    const cart = price([line("p-burger")], { discounts: ds });
+    expect(info.price).toBe(cart.lines[0].unitPrice);
+  });
+
+  it("ignores expired discounts", () => {
+    const d = discount({ id: "d", scope: "product", type: "fixed", value: 25, productId: "p-burger", endsAt: "2026-10-01T00:00:00Z" });
+    expect(productPriceInfo(burger, [d], NOW).discount).toBeNull();
   });
 });
