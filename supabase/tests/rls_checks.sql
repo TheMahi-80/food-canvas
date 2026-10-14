@@ -45,14 +45,14 @@ begin
 end;
 $$;
 
--- Passes only if the statement fails with the given SQLSTATE.
+-- Passes only if the statement fails with one of the given SQLSTATEs (comma-separated).
 create function rls_test.expect_error(p_sql text, p_state text, p_label text) returns void
 language plpgsql as $$
 begin
   begin
     execute p_sql;
   exception when others then
-    if sqlstate = p_state then
+    if sqlstate = any (string_to_array(p_state, ',')) then
       return;
     end if;
     raise exception 'FAIL: % raised % (%) instead of %', p_label, sqlstate, sqlerrm, p_state;
@@ -319,8 +319,8 @@ select rls_test.expect_denied($q$insert into storage.objects (bucket_id, name) v
 select rls_test.expect_denied($q$insert into public.admin_users (user_id) values ('f1000000-0000-4000-8000-0000000000a2')$q$, 'admin granting admin from the app');
 
 -- category deletion never orphans products
--- 23001 = restrict_violation (ON DELETE RESTRICT)
-select rls_test.expect_error($q$delete from public.categories where id = 'f1000000-0000-4000-8000-0000000000c1'$q$, '23001', 'direct delete of category with products');
+-- ON DELETE RESTRICT: 23503 on Postgres 17 (Supabase), 23001 on Postgres 18+ (PGlite)
+select rls_test.expect_error($q$delete from public.categories where id = 'f1000000-0000-4000-8000-0000000000c1'$q$, '23503,23001', 'direct delete of category with products');
 select rls_test.expect_error($q$select public.delete_category('f1000000-0000-4000-8000-0000000000c1')$q$, '23503', 'delete_category with products and no choice');
 select rls_test.expect_error($q$select public.delete_category('f1000000-0000-4000-8000-0000000000c1', 'f1000000-0000-4000-8000-0000000000c1')$q$, '22023', 'delete_category reassign to itself');
 select public.delete_category('f1000000-0000-4000-8000-0000000000c3');

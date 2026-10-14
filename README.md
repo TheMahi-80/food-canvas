@@ -72,7 +72,7 @@ policies, so admins can only be added from the SQL editor.
      select u.email from public.admin_users a join auth.users u on u.id = a.user_id;  -- verify
      ```
    - To remove an admin: `delete from public.admin_users where user_id = (select id from auth.users where email = '...');`
-7. Project Settings → API Keys: copy the Project URL and anon/publishable key into `.env.local`.
+7. Project Settings → API Keys: copy the Project URL and the **publishable** key into `.env.local`
    Never put the service-role/secret key in this app.
 
 `npm test` also runs the migrations, seed and `rls_checks.sql` locally against PGlite (in-memory
