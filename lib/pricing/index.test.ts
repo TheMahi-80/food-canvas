@@ -271,3 +271,196 @@ describe("delivery fee", () => {
     expect(price([line("p-burger")], { deliveryFee: null })).toMatchObject({ deliveryFee: null, estimatedTotal: 180 });
   });
 });
+
+describe("edge cases", () => {
+  const coupon = (overrides: Partial<Discount> = {}) =>
+    discount({ id: "coupon", scope: "cart", type: "fixed", value: 50, couponCode: "SAVE50", ...overrides });
+
+  it("discount larger than the item: base drops to 0 but add-ons are still charged", () => {
+    const r = price([line("p-burger", 2, null, ["a-cheese"])], {
+      discounts: [discount({ id: "huge", scope: "product", type: "fixed", value: 10_000, productId: "p-burger" })],
+    });
+    expect(r.lines[0]).toMatchObject({ unitPrice: 30, lineTotal: 60 });
+    expect(r.lines[0].itemDiscount?.amountPerUnit).toBe(180); // never more than the base price
+    expect(r.itemDiscountTotal).toBe(360);
+  });
+
+  it("100% item discount makes the item free, never negative", () => {
+    const r = price([line("p-burger")], {
+      discounts: [discount({ id: "free", scope: "product", type: "percentage", value: 100, productId: "p-burger" })],
+    });
+    expect(r).toMatchObject({ subtotal: 0, estimatedTotal: 0 });
+  });
+
+  it("sale price equal to or above the regular price is ignored", () => {
+    for (const value of [180, 250]) {
+      const r = price([line("p-burger")], {
+        discounts: [discount({ id: "sale", scope: "product", type: "sale_price", value, productId: "p-burger" })],
+      });
+      expect(r.lines[0]).toMatchObject({ unitPrice: 180, itemDiscount: null });
+    }
+  });
+
+  it("sale price of 0 is allowed (free item promotion)", () => {
+    const r = price([line("p-burger")], {
+      discounts: [discount({ id: "sale0", scope: "product", type: "sale_price", value: 0, productId: "p-burger" })],
+    });
+    expect(r.lines[0].unitPrice).toBe(0);
+  });
+
+  it("two discounts on the same product: best one only, deterministic on ties", () => {
+    const a = discount({ id: "b-second", scope: "product", type: "fixed", value: 20, productId: "p-burger" });
+    const b = discount({ id: "a-first", scope: "product", type: "fixed", value: 20, productId: "p-burger" });
+    const r1 = price([line("p-burger")], { discounts: [a, b] });
+    const r2 = price([line("p-burger")], { discounts: [b, a] });
+    expect(r1.lines[0].unitPrice).toBe(160); // 20 off once, not 40
+    expect(r1.lines[0].itemDiscount?.discountId).toBe("a-first");
+    expect(r2.lines[0].itemDiscount?.discountId).toBe("a-first");
+  });
+
+  it("minimum cart value is inclusive (subtotal exactly at the minimum qualifies)", () => {
+    const auto = discount({ id: "auto", scope: "cart", type: "fixed", value: 20, minCartValue: 360 });
+    expect(price([line("p-burger", 2)], { discounts: [auto] }).cartDiscount?.amount).toBe(20); // 360
+    expect(price([line("p-burger", 1)], { discounts: [auto] }).cartDiscount).toBeNull(); // 180
+  });
+
+  it("unavailable lines do not count towards the minimum", () => {
+    const auto = discount({ id: "auto", scope: "cart", type: "fixed", value: 20, minCartValue: 300 });
+    const r = price([line("p-burger"), line("p-beef")], { discounts: [auto] }); // 180 ok + 220 unavailable
+    expect(r.subtotal).toBe(180);
+    expect(r.cartDiscount).toBeNull();
+  });
+
+  it("not-yet-started and expired automatic cart discounts are ignored", () => {
+    const r = price([line("p-burger", 2)], {
+      discounts: [
+        discount({ id: "future", scope: "cart", type: "fixed", value: 50, startsAt: "2026-10-15T00:00:00Z" }),
+        discount({ id: "past", scope: "cart", type: "fixed", value: 50, endsAt: "2026-10-13T00:00:00Z" }),
+      ],
+    });
+    expect(r.cartDiscount).toBeNull();
+  });
+
+  it("not-yet-started coupon is invalid (even if lookup data is stale)", () => {
+    const r = price([line("p-burger", 2)], { coupon: coupon({ startsAt: "2026-10-15T00:00:00Z" }), couponEntered: true });
+    expect(r).toMatchObject({ couponStatus: "invalid", cartDiscount: null, estimatedTotal: 360 });
+  });
+
+  it("inactive coupon and non-cart 'coupon' data are invalid", () => {
+    expect(price([line("p-burger", 2)], { coupon: coupon({ isActive: false }), couponEntered: true }).couponStatus).toBe("invalid");
+    const wrongScope = coupon({ scope: "product", productId: "p-burger" });
+    expect(price([line("p-burger", 2)], { coupon: wrongScope, couponEntered: true })).toMatchObject({
+      couponStatus: "invalid",
+      cartDiscount: null,
+    });
+  });
+
+  it("several automatic cart discounts: only the largest applies", () => {
+    const r = price([line("p-pizza", 1, "v-10")], {
+      // subtotal 480
+      discounts: [
+        discount({ id: "pct5", scope: "cart", type: "percentage", value: 5 }), // 24
+        discount({ id: "fix30", scope: "cart", type: "fixed", value: 30 }), // 30
+        discount({ id: "fix100-min1000", scope: "cart", type: "fixed", value: 100, minCartValue: 1000 }), // not met
+      ],
+    });
+    expect(r.cartDiscount).toMatchObject({ discountId: "fix30", amount: 30 });
+    expect(r.estimatedTotal).toBe(450);
+  });
+
+  it("one item discount and one cart discount can both apply (documented rule)", () => {
+    const r = price([line("p-burger", 3)], {
+      discounts: [discount({ id: "item", scope: "product", type: "fixed", value: 30, productId: "p-burger" })],
+      coupon: coupon({ minCartValue: 400 }),
+      couponEntered: true,
+    }); // 3 x 150 = 450 >= 400
+    expect(r).toMatchObject({ regularSubtotal: 540, itemDiscountTotal: 90, subtotal: 450, estimatedTotal: 400 });
+    expect(r.cartDiscount?.couponCode).toBe("SAVE50");
+  });
+
+  it("cart discount never reduces the delivery fee", () => {
+    const r = price([line("p-burger")], {
+      discounts: [discount({ id: "all", scope: "cart", type: "percentage", value: 100 })],
+      deliveryFee: 40,
+    });
+    expect(r).toMatchObject({ subtotal: 180, estimatedTotal: 40 });
+    expect(r.cartDiscount?.amount).toBe(180);
+  });
+
+  it("free (৳0) products and add-ons price correctly", () => {
+    const freebie: MenuProduct = { ...burger, id: "p-free", price: 0, addons: [{ ...burger.addons[0], id: "a-free", price: 0 }] };
+    const r = priceCart({ lines: [line("p-free", 5, null, ["a-free"])], products: [freebie], discounts: [], deliveryFee: null, now: NOW });
+    expect(r).toMatchObject({ subtotal: 0, estimatedTotal: 0, orderable: true });
+  });
+
+  it("does not mutate its inputs", () => {
+    const lines = [line("p-burger", 2, null, ["a-cheese"])];
+    const discounts = [discount({ id: "d", scope: "cart", type: "fixed", value: 10 })];
+    const snapshot = JSON.stringify({ lines, discounts, products });
+    price(lines, { discounts });
+    expect(JSON.stringify({ lines, discounts, products })).toBe(snapshot);
+  });
+});
+
+describe("invariants over randomized carts", () => {
+  // Small deterministic PRNG so failures are reproducible.
+  function rng(seed: number) {
+    return () => {
+      seed = (seed * 1664525 + 1013904223) % 2 ** 32;
+      return seed / 2 ** 32;
+    };
+  }
+
+  it("holds for 2,000 random carts and discount sets", () => {
+    const rand = rng(42);
+    const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rand() * xs.length)];
+    const int = (max: number) => Math.floor(rand() * (max + 1));
+    const types = ["percentage", "fixed", "sale_price"] as const;
+
+    for (let i = 0; i < 2000; i++) {
+      const discounts: Discount[] = Array.from({ length: int(5) }, (_, k) => {
+        const scope = pick(["product", "category", "cart"] as const);
+        const type = scope === "cart" ? pick(["percentage", "fixed"] as const) : pick(types);
+        return discount({
+          id: `d${k}`,
+          scope,
+          type,
+          value: type === "percentage" ? 1 + int(99) : int(800),
+          productId: scope === "product" ? pick(["p-burger", "p-pizza", "p-beef"]) : null,
+          categoryId: scope === "category" ? pick(["c-burgers", "c-pizza"]) : null,
+          minCartValue: scope === "cart" && rand() < 0.5 ? int(1500) : null,
+          startsAt: rand() < 0.2 ? "2026-10-15T00:00:00Z" : null,
+          endsAt: rand() < 0.2 ? "2026-10-13T00:00:00Z" : null,
+          isActive: rand() < 0.9,
+        });
+      });
+      const lines: CartLine[] = Array.from({ length: int(4) }, () => {
+        const productId = pick(["p-burger", "p-pizza", "p-beef"]);
+        const variantId = productId === "p-pizza" ? pick(["v-8", "v-10"]) : null;
+        const addonIds = productId === "p-burger" ? (rand() < 0.5 ? ["a-cheese"] : []) : [];
+        return { productId, variantId, addonIds, quantity: 1 + int(5) };
+      });
+      const couponDiscount =
+        rand() < 0.3 ? discount({ id: "cpn", scope: "cart", type: pick(["percentage", "fixed"] as const), value: 1 + int(99), couponCode: "X" }) : null;
+      const deliveryFee = rand() < 0.5 ? int(100) : null;
+
+      const r = priceCart({ lines, products, discounts, coupon: couponDiscount, couponEntered: couponDiscount !== null, deliveryFee, now: NOW });
+
+      const cartAmount = r.cartDiscount?.amount ?? 0;
+      for (const l of r.lines) {
+        expect(Number.isInteger(l.unitPrice) && l.unitPrice >= 0).toBe(true);
+        expect(l.unitPrice).toBeLessThanOrEqual(l.regularUnitPrice);
+        expect(l.unitPrice).toBeGreaterThanOrEqual(l.addonsPrice); // add-ons never discounted
+        expect(l.lineTotal).toBe(l.unitPrice * l.quantity);
+        if (l.itemDiscount) expect(l.itemDiscount.amountPerUnit).toBeLessThanOrEqual(l.regularBasePrice);
+      }
+      expect(r.subtotal).toBe(r.lines.filter((l) => l.status === "ok").reduce((s, l) => s + l.lineTotal, 0));
+      expect(r.subtotal).toBeLessThanOrEqual(r.regularSubtotal);
+      expect(cartAmount).toBeGreaterThanOrEqual(0);
+      expect(cartAmount).toBeLessThanOrEqual(r.subtotal);
+      expect(r.estimatedTotal).toBe(r.subtotal - cartAmount + (deliveryFee ?? 0));
+      expect(r.estimatedTotal).toBeGreaterThanOrEqual(0);
+      expect(Number.isInteger(r.estimatedTotal)).toBe(true);
+    }
+  });
+});
