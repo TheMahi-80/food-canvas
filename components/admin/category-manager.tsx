@@ -276,6 +276,7 @@ function DeleteCategoryDialog({
   const [targetId, setTargetId] = useState("");
   const [understood, setUnderstood] = useState(false);
   const action = useAdminAction();
+  const deleted = useRef(false);
   const ids = { target: useId(), understood: useId() };
   const count = toBanglaDigits(category.productCount);
 
@@ -290,6 +291,7 @@ function DeleteCategoryDialog({
         : { id: category.id, mode: "delete_products" as const, confirmCount: category.productCount };
     action.run(() => deleteCategory(input), {
       onSuccess: () => {
+        deleted.current = true;
         onOpenChange(false);
         onDeleted();
       },
@@ -310,7 +312,7 @@ function DeleteCategoryDialog({
     >
       <AlertDialogContent
         className="data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md"
-        onCloseAutoFocus={restoreFocus(returnFocusRef)}
+        onCloseAutoFocus={(event) => restoreFocus(event, returnFocusRef, deleted.current)}
       >
         <AlertDialogHeader>
           <AlertDialogTitle>{k.deleteTitle(category.nameBn)}</AlertDialogTitle>

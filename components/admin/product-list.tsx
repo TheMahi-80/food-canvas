@@ -267,6 +267,7 @@ export function DeleteProductDialog({
   returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const action = useAdminAction();
+  const deleted = useRef(false);
   return (
     <AlertDialog
       open={open}
@@ -278,7 +279,7 @@ export function DeleteProductDialog({
     >
       <AlertDialogContent
         className="data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md"
-        onCloseAutoFocus={restoreFocus(returnFocusRef)}
+        onCloseAutoFocus={(event) => restoreFocus(event, returnFocusRef, deleted.current)}
       >
         <AlertDialogHeader>
           <AlertDialogTitle>{k.deleteTitle(product.nameBn)}</AlertDialogTitle>
@@ -294,6 +295,7 @@ export function DeleteProductDialog({
             onClick={() =>
               action.run(() => deleteProduct(product.id), {
                 onSuccess: () => {
+                  deleted.current = true;
                   onOpenChange(false);
                   onDeleted();
                 },

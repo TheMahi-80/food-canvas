@@ -13,11 +13,12 @@ describe("computeOverview", () => {
     const o = computeOverview(
       {
         products: [
-          { is_active: true, is_available: true, slug: "burger" },
-          { is_active: true, is_available: false, slug: "sample-beef" },
-          { is_active: false, is_available: true, slug: "sample-hidden" },
+          { is_active: true, is_available: true, slug: "burger", category_id: "c1" },
+          { is_active: true, is_available: false, slug: "sample-beef", category_id: "c1" },
+          { is_active: false, is_available: true, slug: "sample-hidden", category_id: "c1" },
+          { is_active: true, is_available: true, slug: "sample-in-hidden-category", category_id: "c2" },
         ],
-        categories: [{ is_active: true }, { is_active: false }],
+        categories: [{ id: "c1", is_active: true }, { id: "c2", is_active: false }],
         discounts: [
           d({}),
           d({ couponCode: "SAVE" }),
@@ -29,7 +30,7 @@ describe("computeOverview", () => {
       NOW,
     );
     expect(o).toEqual({
-      products: { total: 3, visible: 2, hidden: 1, available: 1, unavailable: 1, sample: 2 },
+      products: { total: 4, visible: 2, hidden: 2, available: 1, unavailable: 1, sample: 3 },
       categories: { total: 2, active: 1 },
       discounts: { live: 1, scheduled: 1, liveCoupons: 1 },
     });

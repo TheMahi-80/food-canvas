@@ -3,8 +3,8 @@ import { isDiscountLive } from "@/lib/pricing";
 import type { Discount } from "@/types/menu";
 
 export interface OverviewInput {
-  products: { is_active: boolean; is_available: boolean; slug: string }[];
-  categories: { is_active: boolean }[];
+  products: { is_active: boolean; is_available: boolean; slug: string; category_id: string }[];
+  categories: { id: string; is_active: boolean }[];
   discounts: Discount[];
 }
 
@@ -15,7 +15,9 @@ export interface Overview {
 }
 
 export function computeOverview(input: OverviewInput, now: Date): Overview {
-  const visible = input.products.filter((p) => p.is_active);
+  // Same rule as the public menu: a product shows only if it and its category are both active.
+  const activeCategories = new Set(input.categories.filter((c) => c.is_active).map((c) => c.id));
+  const visible = input.products.filter((p) => p.is_active && activeCategories.has(p.category_id));
   const live = input.discounts.filter((d) => isDiscountLive(d, now));
   return {
     products: {

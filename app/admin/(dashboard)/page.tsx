@@ -16,8 +16,8 @@ export default async function AdminOverviewPage() {
   const { supabase } = await requireAdminPage();
 
   const [products, categories, discounts, settings, hours] = await Promise.all([
-    supabase.from("products").select("is_active, is_available, slug"),
-    supabase.from("categories").select("is_active"),
+    supabase.from("products").select("is_active, is_available, slug, category_id"),
+    supabase.from("categories").select("id, is_active"),
     supabase.from("discounts").select("*"),
     supabase.from("restaurant_settings").select("whatsapp_number, temporarily_closed").eq("id", 1).maybeSingle(),
     supabase.from("opening_hours").select("*"),

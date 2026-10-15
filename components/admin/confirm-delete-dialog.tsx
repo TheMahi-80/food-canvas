@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useRef, type RefObject } from "react";
 import { Trash2 } from "lucide-react";
 import { restoreFocus } from "@/components/admin/restore-focus";
 import { StatusText } from "@/components/admin/status-text";
@@ -41,6 +41,7 @@ export function ConfirmDeleteDialog({
   returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const action = useAdminAction();
+  const deleted = useRef(false);
   return (
     <AlertDialog
       open={open}
@@ -52,7 +53,7 @@ export function ConfirmDeleteDialog({
     >
       <AlertDialogContent
         className="data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md"
-        onCloseAutoFocus={restoreFocus(returnFocusRef)}
+        onCloseAutoFocus={(event) => restoreFocus(event, returnFocusRef, deleted.current)}
       >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -68,6 +69,7 @@ export function ConfirmDeleteDialog({
             onClick={() =>
               action.run(onConfirm, {
                 onSuccess: () => {
+                  deleted.current = true;
                   onOpenChange(false);
                   onDeleted();
                 },
