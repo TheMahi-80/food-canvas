@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { OrderCta } from "@/components/cart/order-cta";
 import { Button } from "@/components/ui/button";
 import { messages } from "@/lib/i18n";
 import { menuImageUrl } from "@/lib/supabase/storage";
@@ -20,9 +21,7 @@ export function Hero({ settings }: { settings: PublicSettings }) {
             <Button asChild size="lg">
               <Link href="/menu">{messages.actions.exploreMenu}</Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/menu">{messages.actions.orderNow}</Link>
-            </Button>
+            <OrderCta size="lg" variant="outline" />
           </div>
         </div>
         {heroImage ? (

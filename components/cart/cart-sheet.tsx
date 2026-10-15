@@ -2,8 +2,11 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ShoppingBag, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ShoppingBag, Trash2, X } from "lucide-react";
 import { useCart } from "@/components/cart/cart-provider";
+import { CheckoutReview } from "@/components/checkout/checkout-review";
+import { CustomerForm } from "@/components/checkout/customer-form";
+import { useCustomerDetails } from "@/components/checkout/customer-store";
 import { QuantityStepper } from "@/components/cart/quantity-stepper";
 import { ClosedNotice } from "@/components/layout/open-status";
 import { Button } from "@/components/ui/button";
@@ -16,17 +19,27 @@ import type { PricedLine } from "@/lib/pricing";
 const c = messages.cart;
 
 export function CartSheet() {
-  const { cartOpen, setCartOpen, priced, state, menu, site, clear, storageAvailable, restoreFocus } = useCart();
+  const { cartOpen, setCartOpen, priced, state, menu, site, clear, storageAvailable, restoreFocus, couponCheck } = useCart();
+  const customer = useCustomerDetails();
   const [confirmClear, setConfirmClear] = useState(false);
+  const [step, setStep] = useState<"cart" | "checkout">("cart");
+  const [editingDetails, setEditingDetails] = useState(false);
   const isEmpty = state.lines.length === 0;
   const settings = site.settings;
+  const canCheckout = priced.orderable && menu !== null && couponCheck !== "checking";
+  // If the cart stops being orderable mid-checkout (item removed / became unavailable), show the cart again.
+  const inCheckout = step === "checkout" && canCheckout;
 
   return (
     <Sheet
       open={cartOpen}
       onOpenChange={(open) => {
         setCartOpen(open);
-        if (!open) setConfirmClear(false);
+        if (!open) {
+          setConfirmClear(false);
+          setStep("cart");
+          setEditingDetails(false);
+        }
       }}
     >
       <SheetContent side="right" className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md" onCloseAutoFocus={restoreFocus}>
@@ -35,7 +48,23 @@ export function CartSheet() {
           <SheetDescription>{isEmpty ? c.emptyBody : c.itemCount(toBanglaDigits(priced.itemCount))}</SheetDescription>
         </SheetHeader>
 
-        {isEmpty ? (
+        {inCheckout ? (
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setStep("cart"); setEditingDetails(false); }}>
+              <ArrowLeft aria-hidden />
+              {messages.checkout.backToCart}
+            </Button>
+            {customer.details === null || editingDetails ? (
+              <CustomerForm
+                initial={customer.details}
+                onSaved={() => setEditingDetails(false)}
+                onCancel={() => (customer.details ? setEditingDetails(false) : setStep("cart"))}
+              />
+            ) : (
+              <CheckoutReview details={customer.details} saveFailed={customer.saveFailed} onEdit={() => setEditingDetails(true)} />
+            )}
+          </div>
+        ) : isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
             <ShoppingBag aria-hidden className="size-12 text-muted-foreground" />
             <p className="text-lg font-semibold">{c.emptyTitle}</p>
@@ -84,6 +113,10 @@ export function CartSheet() {
               {settings.minOrder !== null && priced.subtotal < settings.minOrder && (
                 <p className="text-xs text-muted-foreground">{c.minOrderWarning(formatTaka(settings.minOrder))}</p>
               )}
+              {priced.orderable && couponCheck === "checking" && <p className="text-xs text-muted-foreground">{messages.checkout.waitCoupon}</p>}
+              <Button type="button" size="lg" className="w-full" disabled={!canCheckout} onClick={() => setStep("checkout")}>
+                {messages.actions.orderNow}
+              </Button>
               <p className="text-xs text-muted-foreground">{c.estimateNote}</p>
             </SheetFooter>
           </>

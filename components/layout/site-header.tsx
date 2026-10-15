@@ -2,10 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import { CartButton } from "@/components/cart/cart-button";
+import { OrderCta } from "@/components/cart/order-cta";
 import { NavLinks } from "@/components/layout/nav-links";
 import { OpenStatus } from "@/components/layout/open-status";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Button } from "@/components/ui/button";
 import { formatHoursSummaryBn } from "@/lib/hours";
 import { messages } from "@/lib/i18n";
 import type { SiteInfo } from "@/types/menu";
@@ -33,9 +33,7 @@ export function SiteHeader({ site }: { site: SiteInfo }) {
             </p>
           )}
           <OpenStatus hours={site.hours} temporarilyClosed={site.settings.temporarilyClosed} />
-          <Button asChild className="hidden sm:inline-flex">
-            <Link href="/menu">{messages.actions.orderNow}</Link>
-          </Button>
+          <OrderCta className="hidden sm:inline-flex" />
           <CartButton />
           <ThemeToggle />
         </div>
