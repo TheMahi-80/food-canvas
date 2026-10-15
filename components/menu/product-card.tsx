@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { UtensilsCrossed } from "lucide-react";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { Badge } from "@/components/ui/badge";
 import { formatTaka, messages, toBanglaDigits } from "@/lib/i18n";
 import type { ProductPriceInfo } from "@/lib/pricing";
@@ -92,6 +93,10 @@ export function ProductCard({
           {item.variants.length === 0 && item.addons.some((a) => a.isAvailable) && (
             <span className="text-xs text-muted-foreground">{m.hasAddons}</span>
           )}
+        </div>
+
+        <div className="pt-2">
+          <AddToCartButton item={item} />
         </div>
       </div>
     </article>

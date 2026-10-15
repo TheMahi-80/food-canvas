@@ -77,6 +77,8 @@ export interface PricedCart {
   subtotal: Taka;
   cartDiscount: AppliedCartDiscount | null;
   couponStatus: CouponStatus;
+  /** Minimum cart value of the entered coupon (for the "minimum not met" message), if any. */
+  couponMinimum: Taka | null;
   /** null = not configured ("to be confirmed"). */
   deliveryFee: Taka | null;
   estimatedTotal: Taka;
@@ -270,6 +272,7 @@ export function priceCart(input: PriceCartInput): PricedCart {
     subtotal,
     cartDiscount,
     couponStatus,
+    couponMinimum: coupon?.minCartValue ?? null,
     deliveryFee,
     estimatedTotal,
   };

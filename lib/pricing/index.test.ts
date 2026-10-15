@@ -503,3 +503,11 @@ describe("productPriceInfo (card display price, same rule as priceCart)", () => 
     expect(productPriceInfo(burger, [d], NOW).discount).toBeNull();
   });
 });
+
+describe("coupon minimum reporting", () => {
+  it("exposes the coupon's minimum for the 'minimum not met' message", () => {
+    const coupon = discount({ id: "c", scope: "cart", type: "fixed", value: 50, couponCode: "SAVE50", minCartValue: 500 });
+    expect(price([line("p-burger")], { coupon, couponEntered: true })).toMatchObject({ couponStatus: "min_not_met", couponMinimum: 500 });
+    expect(price([line("p-burger")]).couponMinimum).toBeNull();
+  });
+});

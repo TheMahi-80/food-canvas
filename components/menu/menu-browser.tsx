@@ -2,6 +2,7 @@
 
 import { useId, useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useCart } from "@/components/cart/cart-provider";
 import { ClosedNotice } from "@/components/layout/open-status";
 import { ProductCard } from "@/components/menu/product-card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { DEFAULT_FILTERS, filterMenuItems, filtersToSearch, hasActiveFilters, pa
 import { productPriceInfo } from "@/lib/pricing";
 import { toAsciiDigits } from "@/lib/validation/customer";
 import { cn } from "@/lib/utils";
-import type { OpeningHoursDay, PublicMenu } from "@/types/menu";
+import type { PublicMenu, SiteInfo } from "@/types/menu";
 
 const m = messages.menu;
 
@@ -22,13 +23,20 @@ function parsePriceInput(value: string): number | null {
   return digits ? Number(digits) : null;
 }
 
-export function MenuBrowser({
+/** Menu data comes from the CartProvider context (loaded once in the public layout). */
+export function MenuBrowser() {
+  const { menu, site } = useCart();
+  if (!menu) return <EmptyState title={m.loadErrorTitle} body={m.loadErrorBody} />;
+  return <MenuBrowserInner menu={menu} hours={site.hours} temporarilyClosed={site.settings.temporarilyClosed} />;
+}
+
+function MenuBrowserInner({
   menu,
   hours,
   temporarilyClosed,
 }: {
   menu: PublicMenu;
-  hours: OpeningHoursDay[];
+  hours: SiteInfo["hours"];
   temporarilyClosed: boolean;
 }) {
   const [search, setSearch] = useUrlSearch();

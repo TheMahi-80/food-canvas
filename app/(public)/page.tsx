@@ -26,8 +26,8 @@ export default async function HomePage() {
       {menu ? (
         <>
           <CategoryLinks menu={menu} />
-          <ProductGrid menu={menu} mode="offers" title={messages.menu.specialOffers} />
-          <ProductGrid menu={menu} mode="featured" title={messages.menu.popularItems} />
+          <ProductGrid mode="offers" title={messages.menu.specialOffers} />
+          <ProductGrid mode="featured" title={messages.menu.popularItems} />
           {menu.items.length > 0 && (
             <div className="mx-auto w-full max-w-6xl px-4 pb-10">
               <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">

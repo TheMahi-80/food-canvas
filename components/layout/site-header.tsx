@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Clock } from "lucide-react";
+import { CartButton } from "@/components/cart/cart-button";
 import { NavLinks } from "@/components/layout/nav-links";
 import { OpenStatus } from "@/components/layout/open-status";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -35,6 +36,7 @@ export function SiteHeader({ site }: { site: SiteInfo }) {
           <Button asChild className="hidden sm:inline-flex">
             <Link href="/menu">{messages.actions.orderNow}</Link>
           </Button>
+          <CartButton />
           <ThemeToggle />
         </div>
       </div>
