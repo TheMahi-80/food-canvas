@@ -63,7 +63,7 @@ policies, so admins can only be added from the SQL editor.
    Expected result: one row, `ALL RLS CHECKS PASSED`. Anything starting with `FAIL:` is a problem.
 5. Authentication → Sign In / Providers: turn **off** "Allow new users to sign up".
    Authentication → URL Configuration: set Site URL to your site.
-6. Create the first admin:
+6. Create the first admin (full guide, including how to verify the protection: `docs/ADMIN.md`):
    - Authentication → Users → Add user → Create new user (email + strong password, Auto Confirm User).
    - SQL editor:
      ```sql
