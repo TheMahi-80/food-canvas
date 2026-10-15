@@ -1,12 +1,20 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createAuthClient, type AuthClient } from "@/lib/supabase/server";
 import { checkAdmin, type AdminCheck } from "./check";
 import { ADMIN_LOGIN } from "./routes";
 
-/** One verified admin check per request (deduplicated across layout, page and components). */
-export const getAdminCheck = cache(async (): Promise<AdminCheck> => checkAdmin(await createAuthClient()));
+/**
+ * One verified admin check per request (deduplicated across layout, page and components).
+ * connection(): admin checks always run at request time, never in a prefetch/prerender (the
+ * Supabase client compares token expiry with the clock, which prerendering forbids).
+ */
+export const getAdminCheck = cache(async (): Promise<AdminCheck> => {
+  await connection();
+  return checkAdmin(await createAuthClient());
+});
 
 /**
  * For every admin page/component that reads admin data. Redirects instead of rendering when the

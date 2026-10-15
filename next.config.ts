@@ -7,6 +7,13 @@ const remotePatterns = supabaseUrl ? [new URL(`${supabaseUrl.replace(/\/+$/, "")
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    serverActions: {
+      // Product photos (max 4 MB after in-browser shrinking, see lib/admin/image.ts) plus form
+      // fields. Kept under Vercel's 4.5 MB request limit.
+      bodySizeLimit: "4.4mb",
+    },
+  },
   images: {
     remotePatterns,
     qualities: [75],

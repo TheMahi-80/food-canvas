@@ -151,6 +151,14 @@ describe("database (PGlite + Supabase stand-in)", () => {
        create policy "oops" on public.admin_users for insert to authenticated with check (user_id = auth.uid());`,
       /FAIL: non-admin: insert admin_users/,
     ],
+    [
+      "reorder function bypasses RLS without an admin check",
+      `create or replace function public.reorder_products(p_ids uuid[]) returns void
+       language sql security definer set search_path = '' as $$
+         update public.products p set sort_order = t.ord from unnest(p_ids) with ordinality as t(id, ord) where p.id = t.id;
+       $$;`,
+      /FAIL: non-admin: rpc reorder_products/,
+    ],
   ];
 
   it.each(mutations)("check script catches: %s", async (_name, breakSql, expected) => {

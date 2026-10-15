@@ -20,6 +20,12 @@ describe("adminRouteDecision (proxy layer)", () => {
     expect(adminRouteDecision("/admin", "", true)).toEqual({ type: "allow" });
   });
 
+  it("Server Action posts reach their own session check instead of being redirected to HTML", () => {
+    expect(adminRouteDecision("/admin/products", "", false, true)).toEqual({ type: "allow" });
+    // ordinary page requests without a session are still redirected
+    expect(adminRouteDecision("/admin/products", "", false, false).type).toBe("redirect");
+  });
+
   it("look-alike paths are not treated as the login page", () => {
     expect(adminRouteDecision("/admin/loginx", "", false).type).toBe("redirect");
     expect(adminRouteDecision("/admin/login-bypass", "", false).type).toBe("redirect");

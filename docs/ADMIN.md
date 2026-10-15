@@ -45,6 +45,25 @@ admin with the SQL above.
 
 Admins cannot add other admins from the website; `admin_users` has no write policy on purpose.
 
+## Managing the menu (ক্যাটাগরি / খাবার)
+
+- **Changes are live immediately.** Every save expires the public menu cache, so customers see new
+  prices, availability and photos on their next page load.
+- **Categories:** add, rename, reorder (arrows), show/hide. Hiding a category hides all its items.
+  Deleting a category that still has items always asks what to do: move the items to another
+  category, or delete them too (needs an extra "I understand" tick). Items are never left without a category.
+- **Items:** name (Bangla, optional English, which is used in the WhatsApp message), description, category,
+  price in whole taka (Bangla or English digits), sizes (customer must pick one; the size price is the
+  item price), extras (optional, added to the price), photo, and three switches:
+  *সাইটে দেখান* (visible), *পাওয়া যাচ্ছে* (orderable now), *জনপ্রিয় তালিকায়* (home page "জনপ্রিয় খাবার").
+  To pause an item for the day, turn off *পাওয়া যাচ্ছে* instead of deleting it.
+- **Editing sizes/extras keeps customers' carts working:** existing sizes and extras keep their identity
+  when renamed or re-priced, so a cart saved on a phone still matches.
+- **Photos:** JPG, PNG or WebP. The browser shrinks large phone photos to at most 1600 px before
+  upload; the server accepts at most 4 MB and checks the file's real type, and the storage bucket
+  only accepts images up to 5 MB from admins. Replacing or removing a photo, or deleting an item,
+  deletes the old file.
+
 ## Forgotten password
 
 Authentication → Users → select the user → **Send password recovery**. This needs the Site URL

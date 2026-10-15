@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ExternalLink, LogOut } from "lucide-react";
 import { signOut } from "@/app/admin/actions";
+import { AdminNav } from "@/components/admin/admin-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,15 +38,7 @@ export default function AdminDashboardLayout({ children }: LayoutProps<"/admin">
             </Suspense>
           </div>
         </div>
-        <nav aria-label={a.navLabel} className="border-t border-border">
-          <ul className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2">
-            <li>
-              <Link href="/admin" className="inline-flex h-10 items-center rounded-lg px-3 text-sm font-medium text-gold">
-                {a.nav.overview}
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        <AdminNav />
       </header>
       <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         <Suspense fallback={<Skeleton className="h-64 w-full" />}>{children}</Suspense>

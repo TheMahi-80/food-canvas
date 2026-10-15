@@ -404,6 +404,18 @@ export type Database = {
           value: number
         }[]
       }
+      reorder_categories: { Args: { p_ids: string[] }; Returns: undefined }
+      reorder_products: { Args: { p_ids: string[] }; Returns: undefined }
+      save_product: {
+        Args: {
+          p_addons: Json
+          p_create: boolean
+          p_id: string
+          p_product: Json
+          p_variants: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

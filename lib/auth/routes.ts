@@ -20,9 +20,17 @@ export type AdminRouteDecision = { type: "allow" } | { type: "redirect"; to: str
  * redirects to login. Admin *status* is checked again by every page and every mutation on the
  * server, and enforced by RLS in the database.
  */
-export function adminRouteDecision(pathname: string, search: string, hasSession: boolean): AdminRouteDecision {
+export function adminRouteDecision(
+  pathname: string,
+  search: string,
+  hasSession: boolean,
+  isServerAction = false,
+): AdminRouteDecision {
   const isLogin = pathname === ADMIN_LOGIN || pathname.startsWith(`${ADMIN_LOGIN}/`);
-  if (isLogin || hasSession) return { type: "allow" };
+  // Server Actions are not redirected: a redirect would hand the action HTML instead of its
+  // result. Every admin action checks the session itself first (requireAdminAction) and answers
+  // "session expired", and RLS refuses the write regardless.
+  if (isLogin || hasSession || isServerAction) return { type: "allow" };
   const next = safeAdminNext(`${pathname}${search}`);
   return { type: "redirect", to: next === ADMIN_HOME ? ADMIN_LOGIN : `${ADMIN_LOGIN}?next=${encodeURIComponent(next)}` };
 }

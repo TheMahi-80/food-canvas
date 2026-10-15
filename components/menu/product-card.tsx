@@ -21,13 +21,16 @@ export function ProductCard({
   categoryName,
   priceInfo,
   priority = false,
+  preview,
 }: {
   item: MenuItem;
   categoryName: string | null;
   priceInfo: ProductPriceInfo;
   priority?: boolean;
+  /** Admin preview: shows a local image (e.g. a photo not uploaded yet) and no cart button. */
+  preview?: { imageSrc: string | null };
 }) {
-  const imageUrl = menuImageUrl(item.imagePath);
+  const imageUrl = preview ? preview.imageSrc : menuImageUrl(item.imagePath);
   const description = item.descriptionBn ?? item.descriptionEn;
   const hasDiscount = priceInfo.discount !== null && priceInfo.price < priceInfo.regularPrice;
 
@@ -95,9 +98,11 @@ export function ProductCard({
           )}
         </div>
 
-        <div className="pt-2">
-          <AddToCartButton item={item} />
-        </div>
+        {!preview && (
+          <div className="pt-2">
+            <AddToCartButton item={item} />
+          </div>
+        )}
       </div>
     </article>
   );

@@ -30,7 +30,8 @@ export async function proxy(request: NextRequest) {
     hasSession = Boolean(data?.claims?.sub);
   }
 
-  const decision = adminRouteDecision(request.nextUrl.pathname, request.nextUrl.search, hasSession);
+  const isServerAction = request.method === "POST" && request.headers.has("next-action");
+  const decision = adminRouteDecision(request.nextUrl.pathname, request.nextUrl.search, hasSession, isServerAction);
   if (decision.type === "redirect") {
     const redirect = NextResponse.redirect(new URL(decision.to, request.url));
     response.cookies.getAll().forEach((c) => redirect.cookies.set(c));

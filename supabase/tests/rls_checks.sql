@@ -110,6 +110,9 @@ language sql as $$
     ('insert admin_users',         $q$insert into public.admin_users (user_id) values ('f1000000-0000-4000-8000-0000000000a2')$q$),
     ('delete admin_users',         $q$delete from public.admin_users$q$),
     ('rpc delete_category',        $q$select public.delete_category('f1000000-0000-4000-8000-0000000000c3')$q$),
+    ('rpc save_product',           $q$select public.save_product('f1000000-0000-4000-8000-0000000000b1', false, '{"category_id":"f1000000-0000-4000-8000-0000000000c1","name_bn":"hacked","price":0,"is_active":true,"is_available":true,"is_featured":false}', '[]', '[]')$q$),
+    ('rpc reorder_categories',     $q$select public.reorder_categories(array['f1000000-0000-4000-8000-0000000000c3', 'f1000000-0000-4000-8000-0000000000c1']::uuid[])$q$),
+    ('rpc reorder_products',       $q$select public.reorder_products(array['f1000000-0000-4000-8000-0000000000b2', 'f1000000-0000-4000-8000-0000000000b1']::uuid[])$q$),
     ('storage upload',             $q$insert into storage.objects (bucket_id, name) values ('menu-images', 'products/zz-test-hack.jpg')$q$),
     ('storage update',             $q$update storage.objects set name = 'products/zz-renamed.jpg' where bucket_id = 'menu-images'$q$),
     ('storage delete',             $q$delete from storage.objects where bucket_id = 'menu-images'$q$),
@@ -317,6 +320,68 @@ select rls_test.expect_rows($q$insert into storage.objects (bucket_id, name) val
 select rls_test.expect_denied($q$insert into storage.objects (bucket_id, name) values ('menu-images', 'other/zz-test.jpg')$q$, 'admin storage upload outside allowed folders');
 select rls_test.expect_denied($q$insert into storage.objects (bucket_id, name) values ('menu-images', 'zz-test-root.jpg')$q$, 'admin storage upload at bucket root');
 select rls_test.expect_denied($q$insert into public.admin_users (user_id) values ('f1000000-0000-4000-8000-0000000000a2')$q$, 'admin granting admin from the app');
+
+-- save_product: atomic create/update with option sync that keeps option ids stable
+select public.save_product(
+  'f1000000-0000-4000-8000-0000000000b9', true,
+  '{"category_id":"f1000000-0000-4000-8000-0000000000c1","slug":"zz-test-saved","name_bn":"সেভ টেস্ট","name_en":null,"description_bn":null,"description_en":null,"price":120,"image_path":null,"is_active":true,"is_available":true,"is_featured":true}',
+  '[{"id":null,"name_bn":"ছোট","name_en":null,"price":120,"is_available":true},{"id":null,"name_bn":"বড়","name_en":null,"price":200,"is_available":true}]',
+  '[{"id":null,"name_bn":"চিজ","name_en":"Cheese","price":30,"is_available":true}]'
+);
+do $$
+declare
+  v_small uuid := (select id from public.product_variants where product_id = 'f1000000-0000-4000-8000-0000000000b9' and name_bn = 'ছোট');
+  v_big uuid := (select id from public.product_variants where product_id = 'f1000000-0000-4000-8000-0000000000b9' and name_bn = 'বড়');
+begin
+  if (select count(*) from public.product_variants where product_id = 'f1000000-0000-4000-8000-0000000000b9') <> 2
+     or (select count(*) from public.product_addons where product_id = 'f1000000-0000-4000-8000-0000000000b9') <> 1 then
+    raise exception 'FAIL: save_product create did not insert options'; end if;
+  -- swap the two names (deferred uniqueness), drop the add-on, add a new one
+  perform public.save_product(
+    'f1000000-0000-4000-8000-0000000000b9', false,
+    '{"category_id":"f1000000-0000-4000-8000-0000000000c1","name_bn":"সেভ টেস্ট ২","name_en":null,"description_bn":null,"description_en":null,"price":130,"image_path":null,"is_active":true,"is_available":false,"is_featured":false}',
+    jsonb_build_array(
+      jsonb_build_object('id', v_big, 'name_bn', 'ছোট', 'name_en', null, 'price', 130, 'is_available', true),
+      jsonb_build_object('id', v_small, 'name_bn', 'বড়', 'name_en', null, 'price', 210, 'is_available', true)),
+    '[{"id":null,"name_bn":"সস","name_en":null,"price":10,"is_available":true}]');
+  if (select name_bn || price from public.products where id = 'f1000000-0000-4000-8000-0000000000b9') <> 'সেভ টেস্ট ২130' then
+    raise exception 'FAIL: save_product update did not change the product'; end if;
+  if (select name_bn from public.product_variants where id = v_small) <> 'বড়'
+     or (select sort_order from public.product_variants where id = v_big) <> 10 then
+    raise exception 'FAIL: save_product did not keep variant ids / order'; end if;
+  if exists (select 1 from public.product_addons where product_id = 'f1000000-0000-4000-8000-0000000000b9' and name_bn = 'চিজ')
+     or not exists (select 1 from public.product_addons where product_id = 'f1000000-0000-4000-8000-0000000000b9' and name_bn = 'সস') then
+    raise exception 'FAIL: save_product did not sync add-ons'; end if;
+end $$;
+-- an option id from another product is refused (and nothing is changed)
+select rls_test.expect_error($q$select public.save_product('f1000000-0000-4000-8000-0000000000b9', false, '{"category_id":"f1000000-0000-4000-8000-0000000000c1","name_bn":"x","price":1,"is_active":true,"is_available":true,"is_featured":false}', '[{"id":"f1000000-0000-4000-8000-0000000000e1","name_bn":"চুরি","price":1,"is_available":true}]', '[]')$q$, 'P0002', 'save_product with a foreign variant id');
+select rls_test.expect_error($q$select public.save_product('f1000000-0000-4000-8000-00000000ffff', false, '{"category_id":"f1000000-0000-4000-8000-0000000000c1","name_bn":"x","price":1,"is_active":true,"is_available":true,"is_featured":false}', '[]', '[]')$q$, 'P0002', 'save_product update of a missing product');
+select rls_test.expect_error($q$select public.save_product('f1000000-0000-4000-8000-0000000000b9', false, '{"category_id":"f1000000-0000-4000-8000-0000000000c1","name_bn":"x","price":-5,"is_active":true,"is_available":true,"is_featured":false}', '[]', '[]')$q$, '23514', 'save_product negative price');
+-- duplicate option names: uniqueness is deferred to commit, so force the check here
+do $$
+begin
+  begin
+    perform public.save_product('f1000000-0000-4000-8000-0000000000b9', false,
+      '{"category_id":"f1000000-0000-4000-8000-0000000000c1","name_bn":"x","price":1,"is_active":true,"is_available":true,"is_featured":false}',
+      '[{"id":null,"name_bn":"এক","price":1,"is_available":true},{"id":null,"name_bn":"এক","price":2,"is_available":true}]', '[]');
+    set constraints all immediate;
+    raise exception 'FAIL: save_product accepted duplicate variant names';
+  exception when unique_violation then
+    null;
+  end;
+end $$;
+set constraints all deferred;
+
+select public.reorder_categories(array['f1000000-0000-4000-8000-0000000000c3', 'f1000000-0000-4000-8000-0000000000c1']::uuid[]);
+select public.reorder_products(array['f1000000-0000-4000-8000-0000000000b9', 'f1000000-0000-4000-8000-0000000000b1']::uuid[]);
+do $$
+begin
+  if (select sort_order from public.categories where id = 'f1000000-0000-4000-8000-0000000000c1') <> 10
+     or (select sort_order from public.categories where id = 'f1000000-0000-4000-8000-0000000000c3') <> 0 then
+    raise exception 'FAIL: reorder_categories'; end if;
+  if (select sort_order from public.products where id = 'f1000000-0000-4000-8000-0000000000b1') <> 10 then
+    raise exception 'FAIL: reorder_products'; end if;
+end $$;
 
 -- category deletion never orphans products
 -- ON DELETE RESTRICT: 23503 on Postgres 17 (Supabase), 23001 on Postgres 18+ (PGlite)
