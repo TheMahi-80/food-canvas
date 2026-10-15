@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Hind_Siliguri, Inter } from "next/font/google";
 import { messages } from "@/lib/i18n";
+import { pageOpenGraph, pageTwitter } from "@/lib/seo/metadata";
 import { resolveSiteUrl } from "@/lib/seo/site-url";
 import { SERVER_DEFAULT_THEME, themeInitScript } from "@/lib/theme";
 import "./globals.css";
@@ -21,7 +22,7 @@ const bangla = Hind_Siliguri({
 const siteUrl = resolveSiteUrl();
 
 export const metadata: Metadata = {
-  // Without a known domain (local dev) relative URLs are kept rather than pointing at localhost.
+  // Without a known domain (local dev) Next.js falls back to localhost for absolute URLs.
   ...(siteUrl ? { metadataBase: siteUrl } : {}),
   title: {
     default: messages.meta.defaultTitle,
@@ -29,15 +30,8 @@ export const metadata: Metadata = {
   },
   description: messages.meta.description,
   applicationName: messages.meta.siteName,
-  openGraph: {
-    type: "website",
-    locale: "bn_BD",
-    siteName: messages.meta.siteName,
-    title: messages.meta.defaultTitle,
-    description: messages.meta.description,
-    // Image: app/opengraph-image.tsx (the logo on the brand background).
-  },
-  twitter: { card: "summary_large_image", title: messages.meta.defaultTitle, description: messages.meta.description },
+  openGraph: pageOpenGraph(),
+  twitter: pageTwitter(),
   formatDetection: { telephone: false },
 };
 

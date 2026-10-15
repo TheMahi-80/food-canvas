@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { MenuBrowser } from "@/components/menu/menu-browser";
 import { messages } from "@/lib/i18n";
 import { getPublicMenu } from "@/lib/menu/queries";
+import { pageOpenGraph, pageTwitter } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = {
   title: messages.menu.pageTitle,
   description: messages.menu.pageIntro,
   alternates: { canonical: "/menu" },
-  openGraph: { title: `${messages.menu.pageTitle} | ${messages.meta.siteName}`, description: messages.menu.pageIntro },
+  openGraph: pageOpenGraph(`${messages.menu.pageTitle} | ${messages.meta.siteName}`, messages.menu.pageIntro),
+  twitter: pageTwitter(`${messages.menu.pageTitle} | ${messages.meta.siteName}`, messages.menu.pageIntro),
 };
 
 export default async function MenuPage() {
