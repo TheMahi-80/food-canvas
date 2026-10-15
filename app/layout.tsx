@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Hind_Siliguri, Inter } from "next/font/google";
 import { messages } from "@/lib/i18n";
+import { resolveSiteUrl } from "@/lib/seo/site-url";
 import { SERVER_DEFAULT_THEME, themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -17,10 +18,11 @@ const bangla = Hind_Siliguri({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+const siteUrl = resolveSiteUrl();
 
 export const metadata: Metadata = {
-  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
+  // Without a known domain (local dev) relative URLs are kept rather than pointing at localhost.
+  ...(siteUrl ? { metadataBase: siteUrl } : {}),
   title: {
     default: messages.meta.defaultTitle,
     template: `%s | ${messages.meta.siteName}`,
@@ -33,8 +35,10 @@ export const metadata: Metadata = {
     siteName: messages.meta.siteName,
     title: messages.meta.defaultTitle,
     description: messages.meta.description,
-    images: [{ url: "/brand/logo.png", width: 504, height: 495, alt: messages.meta.siteName }],
+    // Image: app/opengraph-image.tsx (the logo on the brand background).
   },
+  twitter: { card: "summary_large_image", title: messages.meta.defaultTitle, description: messages.meta.description },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {

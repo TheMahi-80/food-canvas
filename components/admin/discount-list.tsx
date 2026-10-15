@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useOptimistic, useState } from "react";
+import { useId, useOptimistic, useRef, useState } from "react";
 import { Info, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteDiscount, setDiscountActive } from "@/app/admin/discount-actions";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
@@ -88,6 +88,7 @@ export function DiscountList({
 function DiscountRow({ discount: d, target, now, onDeleted }: { discount: Discount; target: string | null | undefined; now: number; onDeleted: () => void }) {
   const [active, setActive] = useOptimistic(d.isActive);
   const [deleting, setDeleting] = useState(false);
+  const deleteButton = useRef<HTMLButtonElement>(null);
   const toggle = useAdminAction();
   const switchId = useId();
   const status = discountStatus({ ...d, isActive: active }, new Date(now));
@@ -135,7 +136,7 @@ function DiscountRow({ discount: d, target, now, onDeleted }: { discount: Discou
               {c.edit}
             </Link>
           </Button>
-          <Button type="button" size="sm" variant="destructive" onClick={() => setDeleting(true)} aria-label={`${c.delete}: ${d.nameBn}`}>
+          <Button ref={deleteButton} type="button" size="sm" variant="destructive" onClick={() => setDeleting(true)} aria-label={`${c.delete}: ${d.nameBn}`}>
             <Trash2 aria-hidden />
             {c.delete}
           </Button>
@@ -150,6 +151,7 @@ function DiscountRow({ discount: d, target, now, onDeleted }: { discount: Discou
         confirmLabel={k.deleteConfirm}
         onConfirm={() => deleteDiscount(d.id)}
         onDeleted={onDeleted}
+        returnFocusRef={deleteButton}
       />
     </li>
   );

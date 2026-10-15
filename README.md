@@ -32,6 +32,21 @@ npm run dev                  # http://localhost:3000
 See `.env.example`. Only placeholders are committed; real values go in `.env.local` (git-ignored)
 and in the Vercel project settings. The Supabase service-role key is not used by this app.
 
+`NEXT_PUBLIC_SITE_URL` (https only) is the public address used for share previews, the sitemap,
+`robots.txt` and structured data. On Vercel the production domain is used if it is empty. Without
+either (local development) the sitemap is empty and absolute URLs are left out instead of guessed.
+Set it once the real domain is known.
+
+## Logo and images
+
+- `public/brand/logo.png` is the only brand asset so far. It is used unmodified (never redrawn
+  or stretched) in the header, the favicon (`app/icon.png`) and the share preview
+  (`app/opengraph-image.tsx`, the logo centred on the dark background).
+- When a text-free FC mark is available, add it to `public/brand/` and switch the favicon and
+  share preview to it.
+- Menu photos are uploaded in admin (JPEG/PNG/WebP, max 5 MB). Each upload gets a new file
+  name, so resized copies are cached for 30 days without showing stale images.
+
 ## Database (Supabase)
 
 Everything lives in `supabase/`:

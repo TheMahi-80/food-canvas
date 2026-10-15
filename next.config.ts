@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns,
     qualities: [75],
+    formats: ["image/avif", "image/webp"],
+    // Uploaded images get a new file name on every change, so optimized copies can be kept long.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   turbopack: {
     rules: {

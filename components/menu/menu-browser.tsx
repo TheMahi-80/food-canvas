@@ -193,6 +193,7 @@ function MenuBrowserInner({
       </details>
 
       {/* Result summary */}
+      <h2 className="sr-only">{m.resultsHeading}</h2>
       <div className="flex min-h-10 flex-wrap items-center justify-between gap-2">
         <p aria-live="polite" className="text-sm text-muted-foreground">
           {menuIsEmpty ? "" : m.resultCount(toBanglaDigits(results.length))}

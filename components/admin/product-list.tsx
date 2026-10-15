@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useId, useMemo, useOptimistic, useState } from "react";
+import { useId, useMemo, useOptimistic, useRef, useState, type RefObject } from "react";
 import { ArrowDown, ArrowUp, Pencil, Plus, Search, Trash2, UtensilsCrossed } from "lucide-react";
 import { deleteProduct, reorderProducts, setProductFlag } from "@/app/admin/menu-actions";
 import { NativeSelect } from "@/components/admin/native-select";
+import { restoreFocus } from "@/components/admin/restore-focus";
 import { StatusText } from "@/components/admin/status-text";
 import { useAdminAction, type ActionStatus } from "@/components/admin/use-admin-action";
 import {
@@ -176,6 +177,7 @@ function ProductRow({
     is_featured: product.isFeatured,
   });
   const [deleting, setDeleting] = useState(false);
+  const deleteButton = useRef<HTMLButtonElement>(null);
   const toggle = useAdminAction();
   const imageUrl = menuImageUrl(product.imagePath);
   const switchIds = { is_active: useId(), is_available: useId(), is_featured: useId() };
@@ -239,14 +241,14 @@ function ProductRow({
               {c.edit}
             </Link>
           </Button>
-          <Button type="button" size="sm" variant="destructive" onClick={() => setDeleting(true)} aria-label={`${c.delete}: ${product.nameBn}`}>
+          <Button ref={deleteButton} type="button" size="sm" variant="destructive" onClick={() => setDeleting(true)} aria-label={`${c.delete}: ${product.nameBn}`}>
             <Trash2 aria-hidden />
             {c.delete}
           </Button>
         </div>
       </div>
       <StatusText status={toggle.status} className="mt-2" />
-      <DeleteProductDialog product={product} open={deleting} onOpenChange={setDeleting} onDeleted={onDeleted} />
+      <DeleteProductDialog product={product} open={deleting} onOpenChange={setDeleting} onDeleted={onDeleted} returnFocusRef={deleteButton} />
     </li>
   );
 }
@@ -256,11 +258,13 @@ export function DeleteProductDialog({
   open,
   onOpenChange,
   onDeleted,
+  returnFocusRef,
 }: {
   product: { id: string; nameBn: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDeleted: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const action = useAdminAction();
   return (
@@ -272,7 +276,10 @@ export function DeleteProductDialog({
         if (!next) action.setStatus(null);
       }}
     >
-      <AlertDialogContent className="data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md">
+      <AlertDialogContent
+        className="data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md"
+        onCloseAutoFocus={restoreFocus(returnFocusRef)}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{k.deleteTitle(product.nameBn)}</AlertDialogTitle>
           <AlertDialogDescription>{k.deleteBody}</AlertDialogDescription>

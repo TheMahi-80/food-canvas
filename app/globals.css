@@ -65,7 +65,7 @@
   --destructive: #f87171;
   --success: #4ade80;
   --border: #262626;
-  --input: #333333;
+  --input: #737373; /* field and switch outlines: >= 3:1 against card and page (WCAG 1.4.11) */
   --ring: #ffe500;
   --radius: 0.75rem;
 }
@@ -91,7 +91,7 @@
   --destructive: #b91c1c;
   --success: #15803d;
   --border: #e3ddd1;
-  --input: #cfc8ba;
+  --input: #857e72;
   --ring: #7a5c00;
 }
 

@@ -82,6 +82,7 @@ export function ProductForm({
   const router = useRouter();
   const action = useAdminAction();
   const [deleting, setDeleting] = useState(false);
+  const deleteButton = useRef<HTMLButtonElement>(null);
   const defaultCategory = initialCategoryId && categories.some((cat) => cat.id === initialCategoryId) ? initialCategoryId : (categories[0]?.id ?? "");
   const defaults = useMemo(() => toFormValues(product, defaultCategory), [product, defaultCategory]);
 
@@ -228,7 +229,7 @@ export function ProductForm({
             <Link href="/admin/products">{k.viewAll}</Link>
           </Button>
           {product && (
-            <Button type="button" variant="destructive" className="ml-auto" onClick={() => setDeleting(true)}>
+            <Button ref={deleteButton} type="button" variant="destructive" className="ml-auto" onClick={() => setDeleting(true)}>
               <Trash2 aria-hidden />
               {c.delete}
             </Button>
@@ -254,6 +255,7 @@ export function ProductForm({
           open={deleting}
           onOpenChange={setDeleting}
           onDeleted={() => router.replace("/admin/products")}
+          returnFocusRef={deleteButton}
         />
       )}
     </div>
@@ -336,7 +338,7 @@ function OptionEditor({
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h2 className="text-sm font-semibold">{title}</h2>
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       {fields.length > 0 && (

@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useOptimistic, useState } from "react";
+import { useId, useOptimistic, useRef, useState, type RefObject } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { createCategory, deleteCategory, reorderCategories, updateCategory } from "@/app/admin/menu-actions";
 import { Field, fieldAria } from "@/components/admin/field";
 import { NativeSelect } from "@/components/admin/native-select";
+import { restoreFocus } from "@/components/admin/restore-focus";
 import { StatusText } from "@/components/admin/status-text";
 import { useAdminAction, type ActionStatus } from "@/components/admin/use-admin-action";
 import {
@@ -105,6 +106,7 @@ function CategoryRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const deleteButton = useRef<HTMLButtonElement>(null);
   const [active, setActive] = useOptimistic(category.isActive);
   const toggle = useAdminAction();
   const switchId = useId();
@@ -155,7 +157,7 @@ function CategoryRow({
                   <Pencil aria-hidden />
                   {c.edit}
                 </Button>
-                <Button type="button" size="sm" variant="destructive" onClick={() => setDeleting(true)}>
+                <Button ref={deleteButton} type="button" size="sm" variant="destructive" onClick={() => setDeleting(true)}>
                   <Trash2 aria-hidden />
                   {c.delete}
                 </Button>
@@ -165,7 +167,7 @@ function CategoryRow({
           )}
         </div>
       </div>
-      <DeleteCategoryDialog category={category} others={others} open={deleting} onOpenChange={setDeleting} onDeleted={onDeleted} />
+      <DeleteCategoryDialog category={category} others={others} open={deleting} onOpenChange={setDeleting} onDeleted={onDeleted} returnFocusRef={deleteButton} />
     </li>
   );
 }
@@ -260,12 +262,14 @@ function DeleteCategoryDialog({
   open,
   onOpenChange,
   onDeleted,
+  returnFocusRef,
 }: {
   category: AdminCategory;
   others: AdminCategory[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDeleted: () => void;
+  returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const hasProducts = category.productCount > 0;
   const [choice, setChoice] = useState<DeleteChoice>(others.length > 0 ? "reassign" : "delete_products");
@@ -304,7 +308,10 @@ function DeleteCategoryDialog({
         }
       }}
     >
-      <AlertDialogContent className="data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md">
+      <AlertDialogContent
+        className="data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md"
+        onCloseAutoFocus={restoreFocus(returnFocusRef)}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{k.deleteTitle(category.nameBn)}</AlertDialogTitle>
           <AlertDialogDescription>{hasProducts ? k.deleteHasProducts(count) : k.deleteEmpty}</AlertDialogDescription>

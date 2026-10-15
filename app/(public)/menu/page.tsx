@@ -6,6 +6,8 @@ import { getPublicMenu } from "@/lib/menu/queries";
 export const metadata: Metadata = {
   title: messages.menu.pageTitle,
   description: messages.menu.pageIntro,
+  alternates: { canonical: "/menu" },
+  openGraph: { title: `${messages.menu.pageTitle} | ${messages.meta.siteName}`, description: messages.menu.pageIntro },
 };
 
 export default async function MenuPage() {

@@ -37,6 +37,7 @@ export const bn = {
     subtext: "CUET ও আশেপাশের সবার জন্য মজার খাবার, সহজ অর্ডার।",
   },
   menu: {
+    resultsHeading: "খাবারের তালিকা",
     pageTitle: "মেনু",
     pageIntro: "সব খাবার এক জায়গায়। নাম, ক্যাটাগরি বা দাম দিয়ে খুঁজে নিন।",
     searchLabel: "খাবার খুঁজুন",

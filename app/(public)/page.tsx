@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CategoryLinks } from "@/components/home/category-links";
 import { Hero } from "@/components/home/hero";
@@ -6,6 +7,8 @@ import { ProductGrid } from "@/components/menu/product-grid";
 import { Button } from "@/components/ui/button";
 import { messages } from "@/lib/i18n";
 import { getPublicMenu, getSiteInfo } from "@/lib/menu/queries";
+import { buildLocalBusinessJsonLd, serializeJsonLd } from "@/lib/seo/local-business";
+import { resolveSiteUrl } from "@/lib/seo/site-url";
 import type { PublicMenu } from "@/types/menu";
 
 async function loadMenu(): Promise<PublicMenu | null> {
@@ -16,11 +19,15 @@ async function loadMenu(): Promise<PublicMenu | null> {
   }
 }
 
+export const metadata: Metadata = { alternates: { canonical: "/" } };
+
 export default async function HomePage() {
   const [site, menu] = await Promise.all([getSiteInfo(), loadMenu()]);
+  const jsonLd = buildLocalBusinessJsonLd({ settings: site.settings, hours: site.hours, siteUrl: resolveSiteUrl(), description: messages.meta.description });
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <Hero settings={site.settings} />
 
       {menu ? (
