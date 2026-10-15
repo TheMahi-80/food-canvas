@@ -7,6 +7,7 @@ import { ShieldCheck } from "lucide-react";
 import { saveCustomerDetails } from "@/components/checkout/customer-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useFocusOnMount } from "@/hooks/use-focus-on-mount";
 import { messages } from "@/lib/i18n";
 import { customerDetailsSchema, type CustomerDetails, type CustomerDetailsInput } from "@/lib/validation/customer";
 
@@ -22,6 +23,7 @@ export function CustomerForm({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const heading = useFocusOnMount<HTMLHeadingElement>();
   const ids = { name: useId(), phone: useId(), nameError: useId(), phoneError: useId(), phoneHint: useId() };
   const {
     register,
@@ -30,7 +32,10 @@ export function CustomerForm({
   } = useForm<CustomerDetailsInput, unknown, CustomerDetails>({
     resolver: zodResolver(customerDetailsSchema),
     defaultValues: { name: initial?.name ?? "", phone: initial?.phone ?? "" },
-    mode: "onTouched",
+    // Validate on submit, not on blur: an error appearing on blur pushed the Save button down,
+    // so the press that caused the blur missed it and the form never submitted.
+    mode: "onSubmit",
+    reValidateMode: "onChange",
   });
 
   return (
@@ -43,7 +48,9 @@ export function CustomerForm({
       className="space-y-4"
     >
       <div>
-        <h3 className="text-lg font-semibold">{k.detailsTitle}</h3>
+        <h3 ref={heading} tabIndex={-1} className="text-lg font-semibold outline-none">
+          {k.detailsTitle}
+        </h3>
         <p className="text-sm text-muted-foreground">{k.detailsIntro}</p>
       </div>
 

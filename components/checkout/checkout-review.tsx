@@ -5,6 +5,7 @@ import { Copy, Info, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { useCart } from "@/components/cart/cart-provider";
 import { clearCustomerDetails } from "@/components/checkout/customer-store";
 import { Button } from "@/components/ui/button";
+import { useFocusOnMount } from "@/hooks/use-focus-on-mount";
 import { useNow } from "@/hooks/use-now";
 import { formatOpenStatusBn, getOpenStatus } from "@/lib/hours";
 import { formatTaka, messages } from "@/lib/i18n";
@@ -23,6 +24,7 @@ const k = messages.checkout;
 export function CheckoutReview({ details, saveFailed, onEdit }: { details: CustomerDetails; saveFailed: boolean; onEdit: () => void }) {
   const { priced, site } = useCart();
   const now = useNow();
+  const heading = useFocusOnMount<HTMLHeadingElement>();
   const restaurantNumber = site.settings.whatsappNumber;
 
   const { message, url } = useMemo(() => {
@@ -35,7 +37,9 @@ export function CheckoutReview({ details, saveFailed, onEdit }: { details: Custo
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">{k.reviewTitle}</h3>
+      <h3 ref={heading} tabIndex={-1} className="text-lg font-semibold outline-none">
+        {k.reviewTitle}
+      </h3>
 
       <div className="flex items-start justify-between gap-3 rounded-xl border border-border p-3">
         <div className="min-w-0">
