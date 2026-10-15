@@ -5,45 +5,14 @@
  */
 import { z } from "zod";
 import { messages } from "@/lib/i18n";
+import { optionalText, optionalUuid, requiredText, takaSchema } from "./admin-fields";
 
 const v = messages.admin.validation;
 
-export const MAX_PRICE = 1_000_000;
+export { MAX_PRICE, takaSchema, toAsciiDigits } from "./admin-fields";
+
 export const MAX_VARIANTS = 20;
 export const MAX_ADDONS = 30;
-
-/** Converts Bangla digits to ASCII: "১২০" -> "120". */
-export function toAsciiDigits(input: string): string {
-  return input.replace(/[০-৯]/g, (d) => String(d.charCodeAt(0) - 0x09e6));
-}
-
-/** Whole taka. Accepts numbers or strings with ASCII/Bangla digits, commas and a ৳ sign. */
-export const takaSchema = z.preprocess(
-  (value) => {
-    if (typeof value !== "string") return value;
-    const cleaned = toAsciiDigits(value).replace(/[\s,৳]/g, "");
-    if (cleaned === "") return undefined;
-    return /^-?\d+(\.\d+)?$/.test(cleaned) ? Number(cleaned) : cleaned;
-  },
-  z
-    .number({ error: (issue) => (issue.input === undefined ? v.priceRequired : v.priceNumber) })
-    .int(v.priceWhole)
-    .min(0, v.priceNegative)
-    .max(MAX_PRICE, v.priceTooHigh),
-);
-
-const requiredText = (max: number) =>
-  z
-    .string({ error: v.required })
-    .trim()
-    .min(1, v.required)
-    .max(max, v.tooLong(max));
-
-/** Empty / whitespace-only / missing -> null. */
-const optionalText = (max: number) =>
-  z.preprocess((value) => (value == null ? "" : value), z.string().trim().max(max, v.tooLong(max))).transform((s) => (s === "" ? null : s));
-
-const optionalUuid = z.preprocess((value) => (value === "" || value == null ? null : value), z.uuid().nullable());
 
 // ---------------------------------------------------------------------------
 // Categories

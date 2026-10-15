@@ -12,6 +12,8 @@ const LINKS = [
   { href: "/admin", label: a.nav.overview, exact: true },
   { href: "/admin/categories", label: a.nav.categories, exact: false },
   { href: "/admin/products", label: a.nav.products, exact: false },
+  { href: "/admin/discounts", label: a.nav.discounts, exact: false },
+  { href: "/admin/settings", label: a.nav.settings, exact: false },
 ] as const;
 
 /** The links render in the static shell; the "current page" highlight streams in. */

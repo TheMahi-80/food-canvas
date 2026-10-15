@@ -1,14 +1,12 @@
 "use server";
 
 import { randomBytes, randomUUID } from "node:crypto";
-import { refresh, updateTag } from "next/cache";
 import { fail, ok, dbErrorMessage, guardMessage, zodFieldErrors, type ActionResult } from "@/lib/admin/action-result";
-import { checkImageUpload, MAX_IMAGE_BYTES, productImageFolder, productImagePath } from "@/lib/admin/image";
+import { productImagePath } from "@/lib/admin/image";
+import { published } from "@/lib/admin/publish";
+import { removePaths, removeProductImages, uploadImage } from "@/lib/admin/storage";
 import { requireAdminAction } from "@/lib/auth/admin";
-import { messages, toBanglaDigits } from "@/lib/i18n";
-import { MENU_CACHE_TAG } from "@/lib/menu/queries";
-import type { AuthClient } from "@/lib/supabase/server";
-import { MENU_IMAGES_BUCKET } from "@/lib/supabase/storage";
+import { messages } from "@/lib/i18n";
 import {
   categoryInputSchema,
   categoryUpdateSchema,
@@ -28,12 +26,6 @@ import {
 
 const c = messages.admin.common;
 const cat = messages.admin.categories;
-const prod = messages.admin.products;
-
-function published() {
-  updateTag(MENU_CACHE_TAG);
-  refresh();
-}
 
 const shortId = () => randomBytes(3).toString("hex");
 
@@ -186,7 +178,7 @@ export async function saveProduct(formData: FormData): Promise<ActionResult<{ id
   const image = formData.get("image");
   let uploadedPath: string | null = null;
   if (image instanceof File && image.size > 0) {
-    const upload = await uploadProductImage(supabase, id, image);
+    const upload = await uploadImage(supabase, image, (extension) => productImagePath(id, randomUUID(), extension));
     if (!upload.ok) return fail(upload.error, { image: upload.error });
     uploadedPath = upload.path;
   }
@@ -285,50 +277,4 @@ export async function reorderProducts(ids: unknown): Promise<ActionResult> {
   }
   published();
   return ok(null);
-}
-
-// ---------------------------------------------------------------------------
-// Storage helpers (run as the admin; storage policies allow admins only)
-// ---------------------------------------------------------------------------
-
-async function uploadProductImage(
-  supabase: AuthClient,
-  productId: string,
-  file: File,
-): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
-  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-  const check = checkImageUpload(file.size, head);
-  if (!check.ok) {
-    if (check.error === "too_large") return { ok: false, error: prod.imageTooLarge(toBanglaDigits(MAX_IMAGE_BYTES / 1024 / 1024)) };
-    return { ok: false, error: check.error === "bad_type" ? prod.imageBadType : prod.imageUnreadable };
-  }
-
-  const path = productImagePath(productId, randomUUID(), check.extension);
-  const { error } = await supabase.storage.from(MENU_IMAGES_BUCKET).upload(path, file, {
-    contentType: check.type, // the detected type, not the browser's claim
-    cacheControl: "31536000", // safe: every upload gets a new file name
-    upsert: false,
-  });
-  if (error) {
-    console.error("product image upload failed", "statusCode" in error ? error.statusCode : undefined);
-    return { ok: false, error: prod.imageUploadFailed };
-  }
-  return { ok: true, path };
-}
-
-/** Best effort: a leftover file wastes space but never shows on the site. */
-async function removePaths(supabase: AuthClient, paths: string[]) {
-  if (paths.length === 0) return;
-  const { error } = await supabase.storage.from(MENU_IMAGES_BUCKET).remove(paths);
-  if (error) console.error("image cleanup failed", "statusCode" in error ? error.statusCode : undefined);
-}
-
-async function removeProductImages(supabase: AuthClient, products: { id: string; image_path: string | null }[]) {
-  const paths = new Set<string>();
-  for (const product of products) {
-    if (product.image_path) paths.add(product.image_path);
-    const { data } = await supabase.storage.from(MENU_IMAGES_BUCKET).list(productImageFolder(product.id), { limit: 100 });
-    for (const file of data ?? []) paths.add(`${productImageFolder(product.id)}/${file.name}`);
-  }
-  await removePaths(supabase, [...paths]);
 }

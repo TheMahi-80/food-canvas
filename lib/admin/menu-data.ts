@@ -1,7 +1,7 @@
 import "server-only";
 import type { AuthClient } from "@/lib/supabase/server";
-import { mapDiscount, mapProduct, type ProductWithOptionsRow } from "@/lib/menu/mappers";
-import type { Discount, MenuItem } from "@/types/menu";
+import { fallbackHours, mapDiscount, mapHours, mapProduct, mapSettings, type ProductWithOptionsRow } from "@/lib/menu/mappers";
+import type { Discount, MenuItem, SiteInfo } from "@/types/menu";
 
 /** Admin views of the menu. Queries run as the signed-in admin, so RLS shows hidden rows too. */
 
@@ -72,7 +72,27 @@ export async function loadAdminProduct(supabase: AuthClient, id: string): Promis
 
 /** Every discount (admins see inactive and coupon ones too); pricing decides which are live. */
 export async function loadAdminDiscounts(supabase: AuthClient): Promise<Discount[]> {
-  const { data, error } = await supabase.from("discounts").select("*");
+  const { data, error } = await supabase.from("discounts").select("*").order("created_at", { ascending: false });
   if (error) throw new AdminLoadError("discounts", error.code);
   return data.map(mapDiscount);
+}
+
+export async function loadAdminDiscount(supabase: AuthClient, id: string): Promise<Discount | null> {
+  const { data, error } = await supabase.from("discounts").select("*").eq("id", id).maybeSingle();
+  if (error) throw new AdminLoadError("discount", error.code);
+  return data ? mapDiscount(data) : null;
+}
+
+export async function loadAdminSiteInfo(supabase: AuthClient): Promise<SiteInfo> {
+  const [settings, hours] = await Promise.all([
+    supabase.from("restaurant_settings").select("*").eq("id", 1).maybeSingle(),
+    supabase.from("opening_hours").select("*"),
+  ]);
+  if (settings.error || hours.error || !settings.data) throw new AdminLoadError("settings", settings.error?.code ?? hours.error?.code);
+  return { settings: mapSettings(settings.data), hours: hours.data.length === 7 ? mapHours(hours.data) : fallbackHours() };
+}
+
+/** Request time for "now"-dependent admin views (pages call this after the admin check, at request time). */
+export function requestTime(): number {
+  return Date.now();
 }

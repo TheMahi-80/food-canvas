@@ -1,7 +1,7 @@
 import { Clock, ExternalLink, MapPin, MessageCircle, Phone } from "lucide-react";
 import { OpenStatus } from "@/components/layout/open-status";
 import { formatHoursSummaryBn } from "@/lib/hours";
-import { messages } from "@/lib/i18n";
+import { formatTaka, messages } from "@/lib/i18n";
 import { formatWhatsAppDisplay, whatsAppChatUrl } from "@/lib/whatsapp/number";
 import type { SiteInfo } from "@/types/menu";
 
@@ -91,6 +91,17 @@ export function ContactSection({ site }: { site: SiteInfo }) {
               {c.addressLabel}
             </p>
             <p className="whitespace-pre-line text-muted-foreground">{settings.addressBn ?? c.toBeConfirmed}</p>
+            {(settings.deliveryEnabled !== null || settings.pickupEnabled !== null) && (
+              <ul className="space-y-0.5 pt-2 text-sm">
+                {settings.deliveryEnabled !== null && (
+                  <li>
+                    {settings.deliveryEnabled ? c.delivery.yes : c.delivery.no}
+                    {settings.deliveryEnabled && settings.deliveryFee !== null && ` (${c.deliveryFee(formatTaka(settings.deliveryFee))})`}
+                  </li>
+                )}
+                {settings.pickupEnabled !== null && <li>{settings.pickupEnabled ? c.pickup.yes : c.pickup.no}</li>}
+              </ul>
+            )}
             {mapUrl && (
               <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-gold underline-offset-4 hover:underline">
                 {c.mapLink}

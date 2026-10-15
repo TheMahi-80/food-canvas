@@ -1,17 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Controller, useFieldArray, useForm, useWatch, type Control, type FieldErrors, type Resolver, type UseFormRegister } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowDown, ArrowUp, ImagePlus, Plus, Trash2, Undo2, UtensilsCrossed, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { saveProduct } from "@/app/admin/menu-actions";
 import { Field, fieldAria } from "@/components/admin/field";
 import { NativeSelect } from "@/components/admin/native-select";
 import { DeleteProductDialog } from "@/components/admin/product-list";
-import { shrinkImage } from "@/components/admin/shrink-image";
+import { ImageField, useImagePicker } from "@/components/admin/image-field";
 import { StatusText } from "@/components/admin/status-text";
 import { useAdminAction } from "@/components/admin/use-admin-action";
 import { ProductCard } from "@/components/menu/product-card";
@@ -19,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_ORIGINAL_BYTES } from "@/lib/admin/image";
 import type { AdminCategory, AdminProduct } from "@/lib/admin/menu-data";
 import { messages, toBanglaDigits } from "@/lib/i18n";
 import { productPriceInfo } from "@/lib/pricing";
@@ -101,21 +99,14 @@ export function ProductForm({
     mode: "onTouched",
   });
 
-  // Image chosen in this session (already shrunk), not yet uploaded.
-  const [image, setImage] = useState<{ file: File; url: string } | null>(null);
-  const [imageError, setImageError] = useState<string | null>(null);
-  const [preparingImage, setPreparingImage] = useState(false);
+  const picker = useImagePicker();
   const removeImage = useWatch({ control, name: "removeImage" });
 
   // Whenever the saved product changes (after a save), start from what is in the database.
   useEffect(() => {
     reset(defaults);
   }, [defaults, reset]);
-  const dirty = isDirty || image !== null;
-
-  useEffect(() => () => {
-    if (image) URL.revokeObjectURL(image.url);
-  }, [image]);
+  const dirty = isDirty || picker.image !== null;
 
   // Warn before leaving with unsaved changes.
   useEffect(() => {
@@ -131,44 +122,26 @@ export function ProductForm({
     const formData = new FormData();
     formData.set("payload", JSON.stringify(values));
     if (product) formData.set("id", product.id);
-    if (image) formData.set("image", image.file);
+    if (picker.image) formData.set("image", picker.image.file);
     action.run(() => saveProduct(formData), {
       success: c.saved,
       onSuccess: ({ id, created }) => {
-        setImage(null);
+        picker.clear();
         // Edits: the refreshed page passes the saved product back in and the form resets to it
         // (new sizes/extras get their database ids). New products open their edit page.
         if (created) router.replace(`/admin/products/${id}?created=1`);
       },
       onError: (result) => {
         for (const [field, message] of Object.entries(result.fieldErrors ?? {})) {
-          if (field === "image") setImageError(message);
+          if (field === "image") picker.setError(message);
           else setError(field as Parameters<typeof setError>[0], { message });
         }
       },
     });
   });
 
-  async function chooseImage(file: File | undefined) {
-    setImageError(null);
-    if (!file) return;
-    if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type)) return setImageError(k.imageBadType);
-    if (file.size > MAX_ORIGINAL_BYTES) return setImageError(k.imageTooLarge(toBanglaDigits(MAX_ORIGINAL_BYTES / 1024 / 1024)));
-    setPreparingImage(true);
-    try {
-      const shrunk = await shrinkImage(file);
-      if (shrunk.size > MAX_IMAGE_BYTES) return setImageError(k.imageTooLarge(toBanglaDigits(MAX_IMAGE_BYTES / 1024 / 1024)));
-      setImage({ file: shrunk, url: URL.createObjectURL(shrunk) });
-      setValue("removeImage", false, { shouldDirty: true });
-    } catch {
-      setImageError(k.imageUnreadable);
-    } finally {
-      setPreparingImage(false);
-    }
-  }
-
   const savedImageUrl = menuImageUrl(product?.imagePath ?? null);
-  const shownImage = image?.url ?? (removeImage ? null : savedImageUrl);
+  const shownImage = picker.image?.url ?? (removeImage ? null : savedImageUrl);
 
   const ids = {
     nameBn: useId(),
@@ -177,7 +150,6 @@ export function ProductForm({
     descriptionEn: useId(),
     category: useId(),
     price: useId(),
-    image: useId(),
   };
 
   const hasVariants = (useWatch({ control, name: "variants" }) ?? []).length > 0;
@@ -232,68 +204,14 @@ export function ProductForm({
         </Section>
 
         <Section title={k.sections.image}>
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="relative size-32 shrink-0 overflow-hidden rounded-xl bg-muted">
-              {shownImage ? (
-                <Image src={shownImage} alt={k.image} fill sizes="128px" className="object-cover" />
-              ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground" aria-hidden>
-                  <UtensilsCrossed className="size-8" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1 space-y-2">
-              <label htmlFor={ids.image} className="text-sm font-medium">
-                {k.image}
-              </label>
-              <p id={`${ids.image}-hint`} className="text-xs text-muted-foreground">
-                {k.imageHint}
-              </p>
-              <input
-                id={ids.image}
-                type="file"
-                accept={ACCEPTED_IMAGE_TYPES.join(",")}
-                className="sr-only"
-                aria-describedby={`${ids.image}-hint`}
-                onChange={(event) => {
-                  void chooseImage(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button asChild variant="outline" size="sm" disabled={preparingImage}>
-                  <label htmlFor={ids.image} className="cursor-pointer">
-                    <ImagePlus aria-hidden />
-                    {preparingImage ? k.imagePreparing : shownImage ? k.replaceImage : k.chooseImage}
-                  </label>
-                </Button>
-                {image && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setImage(null)}>
-                    <X aria-hidden />
-                    {c.cancel}
-                  </Button>
-                )}
-                {!image && savedImageUrl && !removeImage && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setValue("removeImage", true, { shouldDirty: true })}>
-                    <Trash2 aria-hidden />
-                    {k.removeImage}
-                  </Button>
-                )}
-                {!image && removeImage && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setValue("removeImage", false, { shouldDirty: true })}>
-                    <Undo2 aria-hidden />
-                    {k.undoRemoveImage}
-                  </Button>
-                )}
-              </div>
-              {!image && removeImage && <p className="text-sm text-muted-foreground">{k.imageWillRemove}</p>}
-              {imageError && (
-                <p role="alert" className="text-sm text-destructive">
-                  {imageError}
-                </p>
-              )}
-            </div>
-          </div>
+          <ImageField
+            label={k.image}
+            hint={k.imageHint}
+            picker={picker}
+            savedUrl={savedImageUrl}
+            remove={removeImage}
+            onRemoveChange={(remove) => setValue("removeImage", remove, { shouldDirty: true })}
+          />
         </Section>
 
         <Section title={k.sections.visibility}>
@@ -303,7 +221,7 @@ export function ProductForm({
         </Section>
 
         <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
-          <Button type="submit" size="lg" disabled={action.pending || preparingImage}>
+          <Button type="submit" size="lg" disabled={action.pending || picker.preparing}>
             {action.pending ? c.saving : c.save}
           </Button>
           <Button asChild variant="ghost">
