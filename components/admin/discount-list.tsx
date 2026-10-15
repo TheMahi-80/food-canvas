@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useId, useOptimistic, useRef, useState } from "react";
-import { Info, Pencil, Plus, Trash2 } from "lucide-react";
+import { Info, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
 import { deleteDiscount, setDiscountActive } from "@/app/admin/discount-actions";
 import { ConfirmDeleteDialog } from "@/components/admin/confirm-delete-dialog";
 import { StatusText } from "@/components/admin/status-text";
@@ -61,6 +61,12 @@ export function DiscountList({
           <Link href="/admin/discounts/new">
             <Plus aria-hidden />
             {k.add}
+          </Link>
+        </Button>
+        <Button asChild size="lg" variant="outline">
+          <Link href="/admin/discounts/new?kind=coupon">
+            <Ticket aria-hidden />
+            {k.addCoupon}
           </Link>
         </Button>
       </div>

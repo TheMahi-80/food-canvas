@@ -29,10 +29,10 @@ export interface DiscountTargetProduct {
   hasSizes: boolean;
 }
 
-function toFormValues(d: Discount | null): DiscountFormValues {
+function toFormValues(d: Discount | null, initialScope: Discount["scope"]): DiscountFormValues {
   return {
     nameBn: d?.nameBn ?? "",
-    scope: d?.scope ?? "product",
+    scope: d?.scope ?? initialScope,
     type: d?.type ?? "percentage",
     value: d ? String(d.value) : "",
     productId: d?.productId ?? "",
@@ -50,15 +50,18 @@ export function DiscountForm({
   products,
   categories,
   justCreated = false,
+  initialScope = "product",
 }: {
   discount: Discount | null;
   products: DiscountTargetProduct[];
   categories: { id: string; nameBn: string }[];
   justCreated?: boolean;
+  /** For a new discount: "cart" opens the form ready for a coupon code. */
+  initialScope?: Discount["scope"];
 }) {
   const router = useRouter();
   const action = useAdminAction();
-  const defaults = useMemo(() => toFormValues(discount), [discount]);
+  const defaults = useMemo(() => toFormValues(discount, initialScope), [discount, initialScope]);
   const {
     register,
     control,
@@ -132,8 +135,8 @@ export function DiscountForm({
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id={ids.scope} label={k.scope}>
-            <NativeSelect {...fieldAria(ids.scope, {})} {...register("scope")}>
+          <Field id={ids.scope} label={k.scope} hint={k.scopeHint}>
+            <NativeSelect {...fieldAria(ids.scope, { hint: k.scopeHint })} {...register("scope")}>
               {(["product", "category", "cart"] as const).map((s) => (
                 <option key={s} value={s}>
                   {k.scopes[s]}
