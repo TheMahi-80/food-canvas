@@ -87,7 +87,7 @@ describe("database (PGlite + Supabase stand-in)", () => {
     );
     expect(unlabeled.rows).toEqual([]);
     const count = await seeded.query<{ n: number }>("select count(*)::int as n from public.products");
-    expect(count.rows[0].n).toBe(6);
+    expect(count.rows[0].n).toBe(24);
     await seeded.close();
   }, 60_000);
 
